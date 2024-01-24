@@ -18,6 +18,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"sync"
 
 	"github.com/natefinch/lumberjack"
 	"github.com/spf13/pflag"
@@ -26,7 +27,7 @@ import (
 )
 
 const (
-	defaultFilename   = "./endverse.log"
+	defaultFilename   = "./gcp.log"
 	defaultMaxSize    = 10
 	defaultMaxBackups = 5
 	defaultMaxAge     = 30
@@ -37,6 +38,7 @@ const (
 )
 
 var sugaredLogger *Logger
+var once sync.Once
 
 var logLevel = zap.NewAtomicLevel()
 
@@ -141,6 +143,26 @@ func (l *Logger) Fatalw(msg string, args ...interface{}) {
 	l.logger.Fatalw(msg, args...)
 }
 
+func (l *Logger) SetFormat(format string) {
+	l.Format = format
+	l.setZapLogger()
+}
+
+func (l *Logger) initLogger() {
+	l.setDefaultValues()
+	l.setLevel()
+	l.setZapLogger()
+}
+
+func (l *Logger) setZapLogger() {
+	writeSyncer := l.getLogWriter()
+	encoder := l.getEncoder()
+	core := zapcore.NewCore(encoder, writeSyncer, logLevel)
+
+	logger := zap.New(core, zap.AddCaller(), zap.AddCallerSkip(1))
+	l.logger = logger.Sugar()
+}
+
 func (l *Logger) setDefaultValues() {
 	l.Filename = defaultFilename
 	l.MaxSize = defaultMaxSize
@@ -193,10 +215,6 @@ func (l *Logger) getLogWriter() zapcore.WriteSyncer {
 }
 
 func AddGlobalFlags(fs *pflag.FlagSet, name string) {
-	sugaredLogger = &Logger{}
-	// set default values
-	sugaredLogger.setDefaultValues()
-
 	// set flags
 	addLoggerFlags(fs)
 
@@ -210,7 +228,14 @@ func AddGlobalFlags(fs *pflag.FlagSet, name string) {
 // logger := log.InitLogger()
 // defer logger.Sync()
 func InitLogger() *Logger {
+	sugaredLogger = initLogger()
 
+	sugaredLogger.logger.Debugf("sugaredLogger: %#v\n", sugaredLogger)
+
+	return sugaredLogger
+}
+
+func initLogger() *Logger {
 	sugaredLogger.setLevel()
 
 	writeSyncer := sugaredLogger.getLogWriter()
@@ -219,8 +244,6 @@ func InitLogger() *Logger {
 
 	logger := zap.New(core, zap.AddCaller(), zap.AddCallerSkip(1))
 	sugaredLogger.logger = logger.Sugar()
-
-	sugaredLogger.logger.Debugf("sugaredLogger: %#v\n", sugaredLogger)
 
 	return sugaredLogger
 }
@@ -319,4 +342,16 @@ func Fatalw(msg string, args ...interface{}) {
 
 func GlobalLogger() *Logger {
 	return sugaredLogger
+}
+
+func SetFormat(format string) {
+	sugaredLogger.Format = format
+	sugaredLogger.setZapLogger()
+}
+
+func init() {
+	once.Do(func() {
+		sugaredLogger = &Logger{}
+		sugaredLogger.initLogger()
+	})
 }
