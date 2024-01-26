@@ -27,7 +27,7 @@ import (
 )
 
 const (
-	defaultFilename   = "./gcp.log"
+	defaultFilename   = "./endverse.log"
 	defaultMaxSize    = 10
 	defaultMaxBackups = 5
 	defaultMaxAge     = 30
