@@ -143,6 +143,10 @@ func (l *Logger) Fatalw(msg string, args ...interface{}) {
 	l.logger.Fatalw(msg, args...)
 }
 
+func (l *Logger) Printf(msg string, args ...interface{}) {
+	sugaredLogger.logger.Infof(msg, args...)
+}
+
 func (l *Logger) SetFormat(format string) {
 	l.Format = format
 	l.setZapLogger()
@@ -338,6 +342,10 @@ func Fatalf(template string, args ...interface{}) {
 
 func Fatalw(msg string, args ...interface{}) {
 	sugaredLogger.logger.Fatalw(msg, args...)
+}
+
+func Printf(msg string, args ...interface{}) {
+	sugaredLogger.logger.Infof(msg, args...)
 }
 
 func GlobalLogger() *Logger {
